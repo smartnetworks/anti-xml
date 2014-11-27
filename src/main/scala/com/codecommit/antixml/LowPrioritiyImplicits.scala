@@ -23,7 +23,7 @@ trait LowPrioritiyImplicits {
 
     implicit def stringToNsRepr(s: String) = NSRepr(s)
 
-    implicit def namespaceBindingToNsRepr(nb: NamespaceBinding) = NSRepr(nb)
+    implicit def namespaceBindingToNsRepr(nb: NamespaceEntry) = NSRepr(nb)
 
     /**
      * Wildcard selector which passes ''all'' nodes unmodified.  This is analogous

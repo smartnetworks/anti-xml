@@ -58,7 +58,7 @@ object Selector {
       def canMatchIn(group: Group[Node]) = group.matches(hash)
     }
 
-  implicit def namespaceBindingToSelector(nb: NamespaceBinding): Selector[Elem] =
+  implicit def namespaceBindingToSelector(nb: NamespaceEntry): Selector[Elem] =
     new OptimizingSelector[Elem] {
       private val pf: PartialFunction[Node, Elem] = {
         case e @ ElemNamespaceUri(uri) if nb.uri.filter(uri == _).isDefined => e

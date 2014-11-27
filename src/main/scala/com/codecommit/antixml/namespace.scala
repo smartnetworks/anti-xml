@@ -7,98 +7,94 @@ import annotation.tailrec
  * string, though it is a legal URI reference, cannot be used as a namespace name.".
  *
  */
-sealed trait NamespaceBinding {
+
+object NamespaceEntry {
+  def apply(uri: String): NamespaceEntry = UnprefixedNamespaceBinding(uri)
+
+  def apply(prefix: String, uri: String): NamespaceEntry = PrefixedNamespaceBinding(prefix, uri)
+}
+
+sealed trait NamespaceEntry {
   def uri: Option[String]
   def prefix: Option[String]
+  def fqname(local: String) = FQName(uri.getOrElse(""), local, prefix)
+}
 
-  def parent: NamespaceBinding
+case class NamespaceBinding(bindings: List[NamespaceEntry] = List.empty) extends Iterable[NamespaceEntry] {
+ 
+  def append(nse: NamespaceEntry) = copy(bindings = nse :: bindings)
 
-  def isEmpty: Boolean
+  def append(uri: String): NamespaceBinding = append(UnprefixedNamespaceBinding(uri))
 
-  def append(uri: String): NamespaceBinding = new UnprefixedNamespaceBinding(uri, this)
+  def append(prefix: String, uri: String): NamespaceBinding = append(PrefixedNamespaceBinding(prefix, uri))
 
-  def append(prefix: String, uri: String): NamespaceBinding = new PrefixedNamespaceBinding(prefix, uri, this)
-
-  @tailrec final def findByPrefix(prefix: String): Option[NamespaceBinding] = this match {
-    case EmptyNamespaceBinding => None
-    case UnprefixedNamespaceBinding(_, parent) => if (prefix.isEmpty) Some(this) else parent.findByPrefix(prefix)
-    case PrefixedNamespaceBinding(p, _, parent) => if (p == prefix) Some(this) else parent.findByPrefix(prefix)
+  def iterator = {
+    var checked = Set.empty[String]
+    @tailrec
+    def prepareNext(ns: List[NamespaceEntry]): List[NamespaceEntry] = ns match {
+      case Nil => Nil
+      case l @ nb :: parent =>
+        val prefix = nb.prefix.getOrElse("")
+        if (checked.contains(prefix)) prepareNext(parent) else {
+          checked = checked + prefix
+          l
+        }
+    }
+    var ns = prepareNext(bindings)
+    new Iterator[NamespaceEntry] {
+      def hasNext = !ns.isEmpty
+      def next = { val nx = ns.head; ns = prepareNext(ns.tail); nx }
+    }
   }
+
+  final def findByPrefix(prefix: String): Option[NamespaceEntry] = find(_.prefix.getOrElse("") == prefix)
 
   // If prefix is supplied, then an UnprefixedNamespaceBinding will never be returned
-  final def findByUri(uri: String, prefix: String = ""): Option[NamespaceBinding] = {
-    @tailrec def find(nb: NamespaceBinding, checked: Set[String]): Option[NamespaceBinding] = nb match {
-      case EmptyNamespaceBinding => None
-      case PrefixedNamespaceBinding(p, u, parent) => if (u == uri && (prefix.isEmpty() || p == prefix) && checked.contains(p)) Some(nb) else find(parent, checked + p)
-      case UnprefixedNamespaceBinding(u, parent) => if (prefix.isEmpty() && u == uri && !checked.contains("")) Some(nb) else find(parent, checked + "")
-    }
-    find(this, Set.empty)
+  final def findByUri(uri: String, prefix: String = ""): Option[NamespaceEntry] = {
+    val muri = Option(uri)
+    val mpfx = if (prefix.isEmpty) None else Some(prefix)
+    find(nb => nb.uri == muri && (mpfx.isEmpty || mpfx == nb.prefix))
   }
 
-  def findPrefixes(uri: String): List[String] = {
-    @tailrec def find(nb: NamespaceBinding, checked: Set[String], list: List[String]): List[String] = nb match {
-      case EmptyNamespaceBinding => list
-      case UnprefixedNamespaceBinding(u, parent) => find(parent, checked + "", if (u == uri && !checked.contains("")) "" :: list else list)
-      case PrefixedNamespaceBinding(p, u, parent) => find(parent, checked + p, if (u == uri && !checked.contains(p)) p :: list else list)
-    }
-    find(this, Set.empty, Nil)
-  }
-
-  /**
-   * This is probably not a good idea.
-   */
-  private[antixml] def noParent: NamespaceBinding
-
-  def toList: List[NamespaceBinding] = {
-    @tailrec def toList(nb: NamespaceBinding, checked: Set[String], list: List[NamespaceBinding]): List[NamespaceBinding] = {
-      if (nb.isEmpty) list else {
-        val pfx = nb.prefix.getOrElse("")
-        toList(nb.parent, checked+pfx, if (checked.contains(pfx)) list else nb.noParent :: list)
-      }
-    }
-    toList(this, Set.empty, Nil).reverse
+  final def findPrefixes(uri: String): List[String] = {
+    val muri = Option(uri)
+    collect { case nb if (nb.uri == muri) => nb.prefix.getOrElse("") }.toList
   }
 }
 
 object NamespaceBinding {
-  val empty: NamespaceBinding = EmptyNamespaceBinding
+  
+  val empty = new NamespaceBinding()
+  
+  def apply(t: (String, String)):NamespaceBinding = apply(t._1, t._2)
+  
+  def apply(nse: NamespaceEntry) = new NamespaceBinding(nse::Nil)
 
-  def apply(t: (String, String)) = new PrefixedNamespaceBinding(t._1, t._2, empty)
+  def apply(prefix: String, uri: String):NamespaceBinding  = apply(PrefixedNamespaceBinding(prefix, uri))
 
-  def apply(t: (String, String), parent: NamespaceBinding) = new PrefixedNamespaceBinding(t._1, t._2, parent)
+  def apply(uri: String):NamespaceBinding = apply(UnprefixedNamespaceBinding(uri))
+  
+  def apply(prefix: String, uri: String, ns: NamespaceBinding) = ns.append(prefix, uri)
 
-  def apply(prefix: String, uri: String, parent: NamespaceBinding) = new PrefixedNamespaceBinding(prefix, uri, parent)
-
-  def apply(prefix: String, uri: String) = new PrefixedNamespaceBinding(prefix, uri, empty)
-
-  def apply(uri: String, parent: NamespaceBinding) = new UnprefixedNamespaceBinding(uri, parent)
-
-  def apply(uri: String) = new UnprefixedNamespaceBinding(uri, empty)
+  def apply(uri: String, ns: NamespaceBinding) = ns.append(uri)
+  
+  def unapply(nb: NamespaceEntry) = Some((nb.prefix, nb.uri))
 }
 
 object NamespaceUri {
-  def unapply(namespaceBinding: NamespaceBinding) = namespaceBinding.uri
+  def unapply(namespaceBinding: NamespaceEntry) = namespaceBinding.uri
 }
 
 sealed class NSRepr(val uri: String)
 
+case class FQName(uri: String, local: String, defaultPrefix: Option[String] = None)
+
 object NSRepr {
   def apply(uri: String): NSRepr = new NSRepr(uri)
-  def apply(nb: NamespaceBinding): NSRepr = new NSRepr(nb.uri.getOrElse(throw new IllegalArgumentException("A namespace binding has to have an URI")))
+  def apply(nb: NamespaceEntry): NSRepr = new NSRepr(nb.uri.getOrElse(throw new IllegalArgumentException("A namespace binding has to have an URI")))
 }
 
-private[antixml] case object EmptyNamespaceBinding extends NamespaceBinding {
-  def uri = None
-  def prefix = None
-  def parent = throw new IllegalStateException("No parent for empty")
-  def isEmpty = true
-
-  private[antixml] def noParent = this
-
-  override def toList = List.empty
-}
-
-case class PrefixedNamespaceBinding(_prefix: String, _uri: String, override val parent: NamespaceBinding = NamespaceBinding.empty) extends NamespaceBinding {
+case class PrefixedNamespaceBinding(_prefix: String, _uri: String) extends NamespaceEntry {
   if (!Elem.isValidName(_prefix)) {
     throw new IllegalArgumentException("Illegal namespace prefix, '" + prefix + "'")
   }
@@ -108,19 +104,15 @@ case class PrefixedNamespaceBinding(_prefix: String, _uri: String, override val 
 
   def prefix = Some(_prefix)
   def uri = Some(_uri)
-  def isEmpty = false
-  private[antixml] def noParent = PrefixedNamespaceBinding(_prefix, _uri, NamespaceBinding.empty)
 }
 
-case class UnprefixedNamespaceBinding(_uri: String, override val parent: NamespaceBinding = NamespaceBinding.empty) extends NamespaceBinding {
+case class UnprefixedNamespaceBinding(_uri: String) extends NamespaceEntry {
   if (!Elem.isValidNamespaceUri(_uri)) {
     throw new IllegalArgumentException("Illegal namespace uri, '" + _uri + "'")
   }
 
   def uri = Some(_uri)
   def prefix = None
-  def isEmpty = false
-  private[antixml] def noParent = UnprefixedNamespaceBinding(_uri, NamespaceBinding.empty)
 }
 
 object ElemNamespaceUri {

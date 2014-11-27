@@ -91,11 +91,11 @@ class XMLSerializer(encoding: String, outputDeclaration: Boolean) {
     def doSerialize(node: Node, w: Writer) {
       node match {
         case Elem(prefix, name, attrs, scope, children) => {
-          val ournamespace = scope.findByPrefix(prefix.getOrElse("")).getOrElse(EmptyNamespaceBinding)
+          val ournamespace = scope.findByPrefix(prefix.getOrElse(""))
           val currentUnprefixedUri = unprefixedUri.find(_.isDefined).map(_.get).getOrElse("")
 
           val (qname, xmlns): (String, String) = ournamespace match {
-            case EmptyNamespaceBinding =>
+            case None =>
               if (currentUnprefixedUri == "") {
                 unprefixedUri = None :: unprefixedUri
                 (name, "")
@@ -104,23 +104,24 @@ class XMLSerializer(encoding: String, outputDeclaration: Boolean) {
                 unprefixedUri = Some("") :: unprefixedUri
                 (name, " xmlns=\"\"")
               }
-            case UnprefixedNamespaceBinding(uri, _) =>
+            case Some(ns) if !ns.prefix.isDefined =>
+              val uri = ns.uri.get
               if (currentUnprefixedUri == uri) {
                 unprefixedUri = None :: unprefixedUri
                 (name, "")
               }
               else {
-                unprefixedUri = Some(uri) :: unprefixedUri
+                unprefixedUri = ns.uri :: unprefixedUri
                 (name, " xmlns=\"" + uri + "\"")
               }
-            case PrefixedNamespaceBinding(pfx, uri, _) =>
+            case Some(ns) =>
               unprefixedUri = None :: unprefixedUri
-              val x: String = pfx + ":" + name
+              val x: String = ns.prefix.get + ":" + name
               (x, "")
           }
 
           val newNamespaces = scope.toList.collect({
-            case p@PrefixedNamespaceBinding(pfx, uri, _) if !namespaceDeclared((pfx, uri)) => (pfx, uri)
+            case NamespaceBinding(Some(pfx), Some(uri)) if !namespaceDeclared((pfx, uri)) => (pfx, uri)
           })
           
           val prefixesStr = newNamespaces.foldLeft("")({(s, t) =>

@@ -122,18 +122,18 @@ class NodeSpecs extends Specification with DataTables with ScalaCheck with XMLGe
     "add namespace conveniently" in {
       val elem = Elem(None, "foo", Attributes(), NamespaceBinding("urn:foo:bar"), Group(Text("Somewhat crazy")))
       val withChildren = elem.addNamespace("bar", "urn:foo:baz")
-      withChildren.namespaces.toList must beEqualTo(List(NamespaceBinding("bar", "urn:foo:baz"), NamespaceBinding("urn:foo:bar")))
+      withChildren.namespaces.toList must beEqualTo(List(NamespaceEntry("bar", "urn:foo:baz"), NamespaceEntry("urn:foo:bar")))
     }
 
     "generate namespace" in {
       val elem = Elem(None, "foo", Attributes(), NamespaceBinding("urn:foo:bar"), Group(Text("Somewhat crazy")))
       val withChildren = elem.addNamespace("", "urn:foo:baz")
-      withChildren.namespaces.toList must beEqualTo(List(NamespaceBinding("ns1", "urn:foo:baz"), NamespaceBinding("urn:foo:bar")))
+      withChildren.namespaces.toList must beEqualTo(List(NamespaceEntry("ns1", "urn:foo:baz"), NamespaceEntry("urn:foo:bar")))
     }
 
     "detect illegal attribute prefixes" in check { str: String =>
       name unapplySeq str match {
-        case Some(_) => Elem(None, "foo", Attributes(QName(str, "bar") -> "bar"), PrefixedNamespaceBinding(str, "urn:bar"), Group()) must not(throwAn[IllegalArgumentException])
+        case Some(_) => Elem(None, "foo", Attributes(QName(str, "bar") -> "bar"), NamespaceBinding(str, "urn:bar"), Group()) must not(throwAn[IllegalArgumentException])
         case None => Elem(None, "foo", Attributes(QName(str, "bar") -> "bar"), NamespaceBinding.empty, Group()) must throwAn[IllegalArgumentException]
       }
     }

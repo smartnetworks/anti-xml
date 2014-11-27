@@ -183,9 +183,35 @@ case class Elem(prefix: Option[String], name: String, attrs: Attributes = Attrib
 
   def addAttributes(attrs: Seq[(QName, String)]) = copy(attrs = this.attrs ++ attrs)
 
+  /**
+   * Use the uri in the FQName to lookup the binding, otherwise add a namespace with
+   * the given default prefix. If the prefix/no prefix is already in use create a new name.
+   */
+  def setAttributes(attrs: Seq[(FQName, Option[String])]): Elem = {
+    val (ns, at) = attrs.foldLeft((namespaces, this.attrs)) {
+      case ((ns, at), (FQName(uri, local, defaultPrefix), value)) =>
+        val (prefix, newNamespaces) = ns.findByUri(uri) match {
+          case None =>
+            val newPrefix = ns.findByPrefix(defaultPrefix.getOrElse("")) match {
+              case None => defaultPrefix
+              case Some(_) => Some(nextValidPrefix(ns))
+            }
+            (newPrefix, newPrefix.fold(ns.append(uri))(np => ns.append(np, uri)))
+          case Some(binding) => (binding.prefix, ns)
+        }
+        val qn = QName(prefix, local)
+        (newNamespaces, value.fold(at - qn)(v => at.updated(qn, v)))
+    }
+    copy(namespaces = ns, attrs = at)
+  }
+
   def withAttributes(attrs: Attributes) = copy(attrs = attrs)
 
   def attr(name: QName) = attrs.get(name)
+
+  def attr(fqname: FQName) = namespaces.collectFirst {
+    case nb if (attrs.contains(QName(nb.prefix, fqname.local))) => attrs(QName(nb.prefix, fqname.local))
+  }   
 
   /**
    * Convenience method to allow adding a single child in a chaining fashion.
@@ -209,6 +235,13 @@ case class Elem(prefix: Option[String], name: String, attrs: Attributes = Attrib
 
   def addNamespace(uri: String) = copy(namespaces = namespaces.append(uri))
 
+  private def nextValidPrefix(ns: NamespaceBinding) = {
+    var i = 1
+    while (ns.findByPrefix("ns" + i).isDefined) {
+      i = i + 1
+    }
+    "ns" + i
+  }
   /**
    * Adds the Map of prefix -> namespace to the scope.
    * If the prefix is the empty prefix, a new prefix is created for it.
@@ -219,24 +252,18 @@ case class Elem(prefix: Option[String], name: String, attrs: Attributes = Attrib
   def addNamespaces(namespaces: Map[String, String]) = {
     if (namespaces.isEmpty) this
     else {
-      def nextValidPrefix = {
-        var i = 1
-        while (this.namespaces.findByPrefix("ns" + i).isDefined) {
-          i = i + 1
-        }
-        "ns" + i
-      }
+
       def mapit(binding: NamespaceBinding, tuple: (String, String)) = tuple match {
         case (_, uri) if (binding.findByUri(uri).isDefined) => binding
         case ("", uri) if (binding.findByPrefix("").isEmpty) => binding.append(uri) //if the empty namespace has not been defined already
         case ("", uri) => {
-          val p = nextValidPrefix
+          val p = nextValidPrefix(this.namespaces)
           binding.append(p, uri)
         }
         case (pfx, uri) => binding.append(pfx, uri)
       }
 
-      val binding = namespaces.foldLeft(this.namespaces){case (ns, tuple) => mapit(ns, tuple)}
+      val binding = namespaces.foldLeft(this.namespaces) { case (ns, tuple) => mapit(ns, tuple) }
       if (binding == this.namespaces) this else copy(namespaces = binding)
     }
   }
@@ -260,11 +287,7 @@ object Elem {
   def apply(nb: NamespaceBinding, name: String, attrs: Attributes): Elem = apply(nb, name, attrs, Group.empty)
 
   def apply(nb: NamespaceBinding, name: String, attrs: Attributes, children: Group[Node]): Elem = {
-    val prefix = nb match {
-      case PrefixedNamespaceBinding(p, _, _) => Some(p)
-      case _ => None
-    }
-    Elem(prefix, name, attrs, nb, children)
+    Elem(nb.headOption.flatMap(_.prefix), name, attrs, nb, children)
   }
 
   def validateNamespace(elem: Elem, ns: String) = {
