@@ -112,5 +112,10 @@ class SelectorSpecs extends Specification with LowPrioritiyImplicits {
       val result = bookstore \\ titlesOfBooksWithAuthors
       result mustEqual Vector("For Whom the Bell Tolls","I, Robot","Programming Scala")
     }
+
+    "work with an attribute selector" in {
+      val elem = <parent><foo /><bar attr="hello"/></parent>.convert
+      (elem \ Selector.attributeValueSelector("attr", "hello")) mustEqual Group(<bar attr="hello"/>.convert)
+    }
   }
 }

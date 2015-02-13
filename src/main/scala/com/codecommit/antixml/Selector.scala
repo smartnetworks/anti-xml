@@ -99,6 +99,17 @@ object Selector {
       def canMatchIn(group: Group[Node]) = group.matches(hash)
     }
 
+  def attributeValueSelector(qn: QName, value: String): Selector[Elem] = 
+    new OptimizingSelector[Elem] {
+      private val pf: PartialFunction[Node, Elem] = {
+        case e: Elem if e.attr(qn).exists(_ == value) => e
+      }
+
+      def apply(node: Node) = pf(node)
+      def isDefinedAt(node: Node) = pf isDefinedAt node
+      def canMatchIn(group: Group[Node]) = true
+    }
+
   /**
    * Implicitly lifts a [[scala.Symbol]] into an instance of [[com.codecommit.antixml.Selector]]
    * which can then be passed to the appropriate methods on [[com.codecommit.antixml.Group]].
