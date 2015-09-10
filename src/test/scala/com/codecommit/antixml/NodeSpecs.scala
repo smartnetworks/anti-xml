@@ -39,8 +39,9 @@ class NodeSpecs extends Specification with DataTables with ScalaCheck with XMLGe
   lazy val numProcessors = Runtime.getRuntime.availableProcessors()
   implicit val params = set(workers = numProcessors, maxSize = 15)      // doesn't need to be so large
   
-  val nameStartChar = """:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD"""
+  val nameStartChar = """:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}"""
   val name = "[" + nameStartChar + "][" + nameStartChar + """\-\.0-9\u00B7\u0300-\u036F\u203F-\u2040]*"""r
+  val textReg = """[\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\x{10000}-\x{10FFFF}]*""".r
   
   "elements" should {
     "serialize empty elements correctly" in {
@@ -179,6 +180,15 @@ class NodeSpecs extends Specification with DataTables with ScalaCheck with XMLGe
     "Support large texts without overflowing" in {
       val text = io.Source.fromInputStream(getClass.getResourceAsStream("/lots-of-text.txt")).getLines().mkString("\n")
       Text(text).toString mustEqual Node.escapeText(text)
+    }
+    "disallow illegal characters" in check {str: String =>
+      textReg unapplySeq str match {
+        case Some(_) => Text(str) must not(throwAn[IllegalArgumentException])
+        case None => Text(str) must throwAn[IllegalArgumentException]
+      }
+    }
+    "allow characters greater than U+FFFF" in {
+      Text(new java.lang.StringBuilder().appendCodePoint(0x10000).toString) must not(throwAn[IllegalArgumentException])
     }
 
   }
