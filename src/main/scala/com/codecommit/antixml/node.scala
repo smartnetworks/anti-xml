@@ -74,8 +74,7 @@ package com.codecommit.antixml
 private[antixml] object Node {
 
   /* http://www.w3.org/TR/xml/#NT-Char */
-  // TODO we are missing codepoints \u10000-\u10FFFF (i.e. those above 16 bits) here
-  private[this] val CharRegex = "[\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD]*".r
+  private[this] val CharRegex = """[\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\x{10000}-\x{10FFFF}]*""".r
 
   def hasOnlyValidChars(value: String) = CharRegex.pattern.matcher(value).matches
   // TODO we should probably find a way to propagate custom entities from DTDs
@@ -271,7 +270,7 @@ case class Elem(prefix: Option[String], name: String, attrs: Attributes = Attrib
 
 object Elem {
   private[this] val NameRegex = {
-    val nameStartChar = """:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD"""
+    val nameStartChar = """:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}"""
     val pattern = """[%s][%s\-\.0-9\u00B7\u0300-\u036F\u203F-\u2040]*""".format(nameStartChar, nameStartChar)
     pattern.r
   }
