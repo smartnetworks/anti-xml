@@ -53,6 +53,8 @@ import javax.xml.transform.stream.StreamSource
  */
 class StAXParser extends XMLParser {
 
+  val factory = XMLInputFactory.newInstance()
+
   override def fromInputStream(inputStream: InputStream): Elem =
     fromStreamSource(new StreamSource(inputStream))
   
@@ -67,7 +69,7 @@ class StAXParser extends XMLParser {
   private def fromStreamSource(source: StreamSource): Elem = {
     import XMLStreamConstants.{CHARACTERS, END_ELEMENT, START_ELEMENT}
 
-    val xmlReader = XMLInputFactory.newInstance().createXMLStreamReader(source)
+    val xmlReader = factory.createXMLStreamReader(source)
     var elems: List[ElemBuilder] = Nil
     var scopes = NamespaceBinding.empty :: Nil
     var results = VectorCase.newBuilder[Node] :: Nil
