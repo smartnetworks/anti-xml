@@ -36,7 +36,7 @@ import scala.math._
 class BloomFilterSpecs extends Specification with ScalaCheck {
 
   "contains" should {
-    "never give a false negative" in check { xs: List[String] =>
+    "never give a false negative" in prop { xs: List[String] =>
       val filter = BloomFilter(xs)()
       (filter must contain(_:Any)).forall(xs)
     }

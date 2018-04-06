@@ -59,7 +59,7 @@ class ConversionSpecs extends Specification with ScalaCheck {
       validate[Group[Node]](ns2)
     }
 
-    "convert text nodes" in check { str: String =>
+    "convert text nodes" in prop { str: String =>
       if (hasOnlyValidChars(str)) {
         val node = xml.Text(str)
         node.convert mustEqual Text(str)
@@ -68,7 +68,7 @@ class ConversionSpecs extends Specification with ScalaCheck {
       }
     }
     
-    "convert entity references" in check { str: String =>
+    "convert entity references" in prop { str: String =>
       if (hasOnlyValidChars(str)) {
         val ref = xml.EntityRef(str)
         ref.convert mustEqual EntityRef(str)

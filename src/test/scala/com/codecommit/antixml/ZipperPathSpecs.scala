@@ -42,37 +42,37 @@ class ZipperPathSpecs extends Specification with ScalaCheck {
   
   "ZipperPath companion" should {
 
-    "build using apply" in check { (items: List[Int]) =>
+    "build using apply" in prop { (items: List[Int]) =>
       val zp = ZipperPath(items:_*)
       items mustEqual List(zp:_*)
     }
 
-    "build from a ZipperPath using fromSeq" in check { (items: ZipperPath) =>
+    "build from a ZipperPath using fromSeq" in prop { (items: ZipperPath) =>
       val zp = ZipperPath.fromSeq(items)
       List(items:_*) mustEqual List(zp:_*)
     }
 
-    "build from an IndexedSeq using fromSeq" in check { (items: Vector[Int]) =>
+    "build from an IndexedSeq using fromSeq" in prop { (items: Vector[Int]) =>
       val zp = ZipperPath.fromSeq(items)
       List(items:_*) mustEqual List(zp:_*)
     }
 
-    "build from a LinearSeq using fromSeq" in check { (items: List[Int]) =>
+    "build from a LinearSeq using fromSeq" in prop { (items: List[Int]) =>
       val zp = ZipperPath.fromSeq(items)
       List(items:_*) mustEqual List(zp:_*)
     }
 
-    "build from a ZipperPath using reversed" in check { (items: ZipperPath) =>
+    "build from a ZipperPath using reversed" in prop { (items: ZipperPath) =>
       val zp = ZipperPath.reversed(items)
       List(items:_*).reverse mustEqual List(zp:_*)
     }
 
-    "build from an IndexedSeq using reversed" in check { (items: Vector[Int]) =>
+    "build from an IndexedSeq using reversed" in prop { (items: Vector[Int]) =>
       val zp = ZipperPath.reversed(items)
       List(items:_*).reverse mustEqual List(zp:_*)
     }
 
-    "build from a LinearSeq using reversed" in check { (items: List[Int]) =>
+    "build from a LinearSeq using reversed" in prop { (items: List[Int]) =>
       val zp = ZipperPath.reversed(items)
       List(items:_*).reverse mustEqual List(zp:_*)
     }
@@ -81,7 +81,7 @@ class ZipperPathSpecs extends Specification with ScalaCheck {
       ZipperPath.empty.length mustEqual 0
     }
 
-    "should produce builders" in check { (items: List[Int]) =>
+    "should produce builders" in prop { (items: List[Int]) =>
       val zp = (ZipperPath.newBuilder ++= items).result
       List(items:_*) mustEqual List(zp:_*)
     }
@@ -134,7 +134,7 @@ class ZipperPathSpecs extends Specification with ScalaCheck {
       }
     }
     
-    "implement length" in check { list: List[Int] =>
+    "implement length" in prop { list: List[Int] =>
       val zp = list.foldLeft(ZipperPath()) { _ :+ _ }
       zp.length === list.length
     }
@@ -150,7 +150,7 @@ class ZipperPathSpecs extends Specification with ScalaCheck {
       !((0 until zp.length) contains i) ==> { zp(i) must throwA[Throwable] }
     }
     
-    "store multiple elements in order" in check { list: List[Int] =>
+    "store multiple elements in order" in prop { list: List[Int] =>
       val newVectorCase = list.foldLeft(emptyPath) { _ :+ _ }
       val res = for (i <- 0 until list.length) yield newVectorCase(i) == list(i)
 
@@ -165,13 +165,13 @@ class ZipperPathSpecs extends Specification with ScalaCheck {
       ((i:Int) => emptyPath(i) mustEqual i).forall(0 until LENGTH)
     }
     
-    "maintain both old and new versions after conj" in check { zp: ZipperPath =>
+    "maintain both old and new versions after conj" in prop { zp: ZipperPath =>
       val zp2 = zp :+ 42
       for (i <- 0 until zp.length) {
         zp2(i) aka ("Index " + i + " in derivative") mustEqual zp(i) aka ("Index " + i + " in origin")
       }
       zp2.last mustEqual 42
-    }(set(maxSize = 3000, minTestsOk = 1000, workers = numProcessors))
+    }(implicitly, implicitly, implicitly, set(maxSize = 3000, minTestsOk = 1000, workers = numProcessors))
 
     "maintain both old and new versions after update" in check { (zp: ZipperPath, i: Int) =>
       (!zp.isEmpty && i > Int.MinValue) ==> {
@@ -206,12 +206,12 @@ class ZipperPathSpecs extends Specification with ScalaCheck {
       back
     }
     
-    "implement foldLeft" in check { list: List[Int] =>
+    "implement foldLeft" in prop { list: List[Int] =>
       val zp = list.foldLeft(ZipperPath()) { _ :+ _ }
       zp.foldLeft(0) { _ + _ } === list.foldLeft(0) { _ + _ }
     }
     
-    "implement foreach" in check { zp: ZipperPath =>
+    "implement foreach" in prop { zp: ZipperPath =>
       val b = Vector.newBuilder[Int]
       for(i <- zp)
         b += i
@@ -255,7 +255,7 @@ class ZipperPathSpecs extends Specification with ScalaCheck {
       back
     }
     
-    "implement init matching Vector semantics" in check { zp: ZipperPath =>
+    "implement init matching Vector semantics" in prop { zp: ZipperPath =>
       !zp.isEmpty ==> {
         toVector(zp.init) mustEqual toVector(zp).init
       }
@@ -316,7 +316,7 @@ class ZipperPathSpecs extends Specification with ScalaCheck {
       toVector(right) mustEqual expectRight
     }
     
-    "implement tail matching Vector semantics" in check { zp: ZipperPath =>
+    "implement tail matching Vector semantics" in prop { zp: ZipperPath =>
       !zp.isEmpty ==> {
         toVector(zp.tail) mustEqual toVector(zp).tail
       }
@@ -355,7 +355,7 @@ class ZipperPathSpecs extends Specification with ScalaCheck {
     }}
     
     "implement equals" >> {
-      "1." in check { list: List[Int] => 
+      "1." in prop { list: List[Int] => 
         val zpA = list.foldLeft(ZipperPath()) { _ :+ _ }
         val zpB = list.foldLeft(ZipperPath()) { _ :+ _ }
         zpA === zpB
@@ -372,7 +372,7 @@ class ZipperPathSpecs extends Specification with ScalaCheck {
       "4." in check { (zp: ZipperPath, data: Int) => zp !== data }
     }
     
-    "implement hashCode" in check { list: List[Int] =>
+    "implement hashCode" in prop { list: List[Int] =>
       val zpA = list.foldLeft(ZipperPath()) { _ :+ _ }
       val zpB = list.foldLeft(ZipperPath()) { _ :+ _ }
       zpA.hashCode === zpB.hashCode

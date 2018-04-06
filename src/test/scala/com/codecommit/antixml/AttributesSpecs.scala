@@ -40,7 +40,7 @@ class AttributesSpecs extends Specification with ScalaCheck with XMLGenerators {
   implicit val arbString = Arbitrary(genSaneString)
   
   "attribute sets" should {
-    "define empty on arbitrary instances" in check { attrs: Attributes =>
+    "define empty on arbitrary instances" in prop { attrs: Attributes =>
       val result = attrs.empty
       validate[Attributes](result)
       result must beEmpty
@@ -93,7 +93,7 @@ class AttributesSpecs extends Specification with ScalaCheck with XMLGenerators {
     
     
     
-    "produce most specific Map with non-String value" in check { attrs: Attributes =>
+    "produce most specific Map with non-String value" in prop { attrs: Attributes =>
       val value = new AnyRef
       val attrsSafe = attrs - "foo"
       val attrs2 = attrsSafe + (QName(None, "foo") -> value)
@@ -109,7 +109,7 @@ class AttributesSpecs extends Specification with ScalaCheck with XMLGenerators {
         key <- Gen.oneOf(attrs.keys.toSeq)
       } yield (attrs, key)
       
-      check { pair: (Attributes, QName) =>
+      prop { pair: (Attributes, QName) =>
         val (attrs, key) = pair
         val attrs2 = attrs - key
         val expected = attrs filterKeys (key !=)
@@ -153,7 +153,7 @@ class AttributesSpecs extends Specification with ScalaCheck with XMLGenerators {
   }
   
   "qualified names" should {
-    "implicitly convert from String" in check { str: String =>
+    "implicitly convert from String" in prop { str: String =>
       val qn: QName = str
       qn.prefix must beNone
       qn.name mustEqual str

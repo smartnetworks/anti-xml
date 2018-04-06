@@ -672,7 +672,7 @@ class ZipperSpecs extends Specification with ScalaCheck with XMLGenerators with 
   
   "Zipper.conditionalFlatMapWithIndex" should {
     
-    "work with simple replacements" in check { (xml: Group[Node]) =>
+    "work with simple replacements" in prop { (xml: Group[Node]) =>
       val zipper = xml select *
       def f(n: Node, i: Int): Option[Seq[Node]] = n match {
         case n if (i & 1) == 0 => None
@@ -686,7 +686,7 @@ class ZipperSpecs extends Specification with ScalaCheck with XMLGenerators with 
       cfmwi.length mustEqual xml.length
     }
     
-    "work with complex replacements" in check { (xml: Group[Node]) =>
+    "work with complex replacements" in prop { (xml: Group[Node]) =>
       def f(n: Node, i: Int): Option[Seq[Node]] = n match {
         case n if (i & 1) == 0 => None
         case _ if (i & 2) == 0 => Some(Seq())

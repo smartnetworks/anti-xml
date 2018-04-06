@@ -86,7 +86,7 @@ class VectorCaseSpecs extends Specification with ScalaCheck{
       }
     }
     
-    "implement length" in check { list: List[Int] =>
+    "implement length" in prop { list: List[Int] =>
       val vec = list.foldLeft(VectorCase[Int]()) { _ :+ _ }
       vec.length === list.length
     }
@@ -106,7 +106,7 @@ class VectorCaseSpecs extends Specification with ScalaCheck{
       !((0 until vec.length) contains i) ==> { vec.updated(i, 42) must throwA[Throwable] }
     }
     
-    "store multiple elements in order" in check { list: List[Int] =>
+    "store multiple elements in order" in prop { list: List[Int] =>
       val newVectorCase = list.foldLeft(vector) { _ :+ _ }
       val res = for (i <- 0 until list.length) yield newVectorCase(i) == list(i)
 
@@ -121,13 +121,13 @@ class VectorCaseSpecs extends Specification with ScalaCheck{
       ((i:Int) => vector(i) mustEqual i).forall(0 until LENGTH)
     }
     
-    "maintain both old and new versions after conj" in check { vec: VectorCase[Int] =>
+    "maintain both old and new versions after conj" in prop { vec: VectorCase[Int] =>
       val vec2 = vec :+ 42
       for (i <- 0 until vec.length) {
         vec2(i) aka ("Index " + i + " in derivative") mustEqual vec(i) aka ("Index " + i + " in origin")
       }
       vec2.last mustEqual 42
-    }(set(maxSize = 3000, minTestsOk = 1000, workers = numProcessors))
+    }(implicitly, implicitly, implicitly, set(maxSize = 3000, minTestsOk = 1000, workers = numProcessors))
 
     "maintain both old and new versions after update" in check { (vec: VectorCase[Int], i: Int) =>
       (!vec.isEmpty && i > Int.MinValue) ==> {
@@ -140,7 +140,7 @@ class VectorCaseSpecs extends Specification with ScalaCheck{
       }
     }
     
-    "implement drop matching Vector semantics (for at least 4 base cases)" in check { vec: VectorCase[Int] =>
+    "implement drop matching Vector semantics (for at least 4 base cases)" in prop { vec: VectorCase[Int] =>
       for (len <- (vec.length - 4) to vec.length) {
         (vec drop len toVector) mustEqual (vec.toVector drop len)
       }
@@ -151,7 +151,7 @@ class VectorCaseSpecs extends Specification with ScalaCheck{
       (vec drop len toVector) mustEqual (vec.toVector drop len)
     }
     
-    "implement dropRight matching Vector semantics (for at least 4 base cases)" in check { vec: VectorCase[Int] =>
+    "implement dropRight matching Vector semantics (for at least 4 base cases)" in prop { vec: VectorCase[Int] =>
       for (len <- (vec.length - 4) to vec.length) {
         (vec dropRight len toVector) mustEqual (vec.toVector dropRight len)
       }
@@ -174,12 +174,12 @@ class VectorCaseSpecs extends Specification with ScalaCheck{
       back
     }
     
-    "implement foldLeft" in check { list: List[Int] =>
+    "implement foldLeft" in prop { list: List[Int] =>
       val vec = list.foldLeft(VectorCase[Int]()) { _ :+ _ }
       vec.foldLeft(0) { _ + _ } === list.foldLeft(0) { _ + _ }
     }
     
-    "implement foreach" in check { vec: VectorCase[Int] =>
+    "implement foreach" in prop { vec: VectorCase[Int] =>
       val b = Vector.newBuilder[Int]
       for(i <- vec)
         b += i
@@ -223,7 +223,7 @@ class VectorCaseSpecs extends Specification with ScalaCheck{
       back
     }
     
-    "implement init matching Vector semantics" in check { vec: VectorCase[Int] =>
+    "implement init matching Vector semantics" in prop { vec: VectorCase[Int] =>
       !vec.isEmpty ==> {
         vec.init.toVector mustEqual vec.toVector.init
       }
@@ -284,7 +284,7 @@ class VectorCaseSpecs extends Specification with ScalaCheck{
       right mustEqual expectRight
     }
     
-    "implement tail matching Vector semantics" in check { vec: VectorCase[Int] =>
+    "implement tail matching Vector semantics" in prop { vec: VectorCase[Int] =>
       !vec.isEmpty ==> {
         vec.tail.toVector mustEqual vec.toVector.tail
       }
@@ -321,7 +321,7 @@ class VectorCaseSpecs extends Specification with ScalaCheck{
     }}
     
     "implement equals" >> {
-      "1." in check { list: List[Int] => 
+      "1." in prop { list: List[Int] => 
         val vecA = list.foldLeft(VectorCase[Int]()) { _ :+ _ }
         val vecB = list.foldLeft(VectorCase[Int]()) { _ :+ _ }
         vecA === vecB
@@ -338,7 +338,7 @@ class VectorCaseSpecs extends Specification with ScalaCheck{
       "4." in check { (vec: VectorCase[Int], data: Int) => vec !== data }
     }
     
-    "implement hashCode" in check { list: List[Int] =>
+    "implement hashCode" in prop { list: List[Int] =>
       val vecA = list.foldLeft(VectorCase[Int]()) { _ :+ _ }
       val vecB = list.foldLeft(VectorCase[Int]()) { _ :+ _ }
       vecA.hashCode === vecB.hashCode
